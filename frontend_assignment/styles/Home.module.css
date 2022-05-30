@@ -23,9 +23,11 @@
 
 .button {
     padding: 10px 16px;
-    border: 1px solid white;
-    border-radius: 5px;
+    border: 2px solid white;
+    border-radius: 10px;
     width: 200px;
+    height: 50px;
+    font-size: 1.2em;
     text-align: center;
     cursor: pointer;
 }
@@ -54,4 +56,10 @@
     margin: 2rem 0;
     line-height: 1.5;
     font-size: 1.5rem;
+}
+
+.wallet {
+    color: #baa3e5;
+    font-weight: bold;
+    font-size: 1.2em;
 }

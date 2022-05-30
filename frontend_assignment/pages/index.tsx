@@ -1,34 +1,44 @@
-import detectEthereumProvider from "@metamask/detect-provider"
 import { Strategy, ZkIdentity } from "@zk-kit/identity"
 import { generateMerkleProof, Semaphore } from "@zk-kit/protocols"
-import { providers } from "ethers"
+import { useWeb3React } from "@web3-react/core";
 import Head from "next/head"
 import React from "react"
 import styles from "../styles/Home.module.css"
+import UserInputForm from "../components/UserInputForm"
+import EthAccount from "../components/EthAccount"
+import GreetingListener from "../components/GreetingListener"
 
 export default function Home() {
-    const [logs, setLogs] = React.useState("Connect your wallet and greet!")
+    const web3React = useWeb3React()
+    const [logs, setLogs] = React.useState("")
 
-    async function greet() {
+    async function greet(data: any) : Promise<boolean> {
         setLogs("Creating your Semaphore identity...")
 
-        const provider = (await detectEthereumProvider()) as any
-
-        await provider.request({ method: "eth_requestAccounts" })
-
-        const ethersProvider = new providers.Web3Provider(provider)
-        const signer = ethersProvider.getSigner()
-        const message = await signer.signMessage("Sign this message to create your identity!")
+        const signer = web3React.library.getSigner()
+        let message;
+        try {
+            message = await signer.signMessage("Sign this message to create your identity!")
+        } catch (err) {
+            setLogs("Message not signed successfully.")
+            return false;            
+        }
 
         const identity = new ZkIdentity(Strategy.MESSAGE, message)
         const identityCommitment = identity.genIdentityCommitment()
         const identityCommitments = await (await fetch("./identityCommitments.json")).json()
 
-        const merkleProof = generateMerkleProof(20, BigInt(0), identityCommitments, identityCommitment)
+        let merkleProof;
+        try {
+            merkleProof = generateMerkleProof(20, BigInt(0), identityCommitments, identityCommitment)
+        } catch (err) {
+            setLogs("Account not authorized. Unable to generate merkle proof.")
+            return false;
+        }
 
         setLogs("Creating your Semaphore proof...")
 
-        const greeting = "Hello world"
+        const greeting = `Hello ${data.name} @${data.age}`
 
         const witness = Semaphore.genWitness(
             identity.getTrapdoor(),
@@ -54,8 +64,10 @@ export default function Home() {
             const errorMessage = await response.text()
 
             setLogs(errorMessage)
+            return false;
         } else {
             setLogs("Your anonymous greeting is onchain :)")
+            return true;
         }
     }
 
@@ -72,11 +84,15 @@ export default function Home() {
 
                 <p className={styles.description}>A simple Next.js/Hardhat privacy application with Semaphore.</p>
 
-                <div className={styles.logs}>{logs}</div>
+                <EthAccount />
 
-                <div onClick={() => greet()} className={styles.button}>
-                    Greet
-                </div>
+                {web3React.active && <>
+                    <UserInputForm onSubmit={greet}/>
+                    <div className={styles.logs}>{logs}</div>
+
+                    <GreetingListener />
+                </>}
+
             </main>
         </div>
     )
